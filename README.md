@@ -8,6 +8,12 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 >
 > Do not use it to make insulin dosing, food, or other treatment decisions. Always rely on your CGM receiver, pump, or clinician for that. Data may be delayed, incomplete, or displayed incorrectly.
 
+## Screenshots
+
+| Today | Trends | Settings | Device detail |
+| :---: | :---: | :---: | :---: |
+| ![Today tab: glucose timeline with target band](docs/screenshots/today.png) | ![Trends tab: time in range, stats, and AGP](docs/screenshots/trends.png) | ![Settings tab: account, devices, targets](docs/screenshots/settings.png) | ![Device detail: Omnipod 5 pump settings](docs/screenshots/op5.png) |
+
 ## Features
 
 **Today** – a glucose timeline for any day, with a shaded 70–180 mg/dL target band.

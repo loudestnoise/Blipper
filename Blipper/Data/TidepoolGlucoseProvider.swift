@@ -6,7 +6,7 @@
 import Foundation
 
 /// Fetches CGM readings and device info from Tidepool, logging in lazily and once more if the session expires.
-actor TidepoolGlucoseProvider: GlucoseDataProvider, DeviceInfoProvider {
+actor TidepoolGlucoseProvider: GlucoseDataProvider, DeviceInfoProvider, TherapyDataProvider {
     /// How far back to look for device uploads and settings.
     private static let deviceLookback: TimeInterval = 30 * 86_400
 
@@ -22,6 +22,18 @@ actor TidepoolGlucoseProvider: GlucoseDataProvider, DeviceInfoProvider {
     func readings(in interval: DateInterval) async throws -> [GlucoseReading] {
         try await withSession { session in
             try await client.cgmReadings(session: session, in: interval)
+        }
+    }
+
+    func therapy(in interval: DateInterval) async throws -> TherapyData {
+        try await withSession { session in
+            try await client.therapy(session: session, in: interval)
+        }
+    }
+
+    func fingersticks(in interval: DateInterval) async throws -> [BGMReading] {
+        try await withSession { session in
+            try await client.fingersticks(session: session, in: interval)
         }
     }
 

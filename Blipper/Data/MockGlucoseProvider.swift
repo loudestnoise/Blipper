@@ -45,7 +45,8 @@ nonisolated struct MockGlucoseProvider: GlucoseDataProvider {
 // MARK: - Curve shape
 
 /// Baseline plus three meal excursions, with the parameters drawn per day.
-nonisolated private struct DayProfile {
+/// Shared with `MockTherapyProvider` so carbs and boluses line up with the excursions.
+nonisolated struct DayProfile {
     struct Meal {
         let hour: Double
         let peak: Double

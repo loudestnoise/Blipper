@@ -8,19 +8,22 @@ import SwiftUI
 
 struct GlucoseChartView: View {
     let readings: [GlucoseReading]
+    var fingersticks: [BGMReading] = []
     let interval: DateInterval
     let selectedReading: GlucoseReading?
     @Binding var selectedTime: Date?
 
     private var yDomain: ClosedRange<Double> {
-        let top = readings.map(\.value).max() ?? 0
+        let top = (readings.map(\.value) + fingersticks.map(\.value)).max() ?? 0
         return 40...max(300, (top / 50).rounded(.up) * 50)
     }
 
-    private var hourStride: Int {
+    private var hourStride: Int { Self.hourStride(for: interval) }
+
+    /// Hours between vertical gridlines, shared with the therapy charts so they line up.
+    static func hourStride(for interval: DateInterval) -> Int {
         let hours = interval.duration / 3600
         switch hours {
-        case ..<4: return 1
         case ..<8: return 1
         case ..<14: return 2
         default: return 4
@@ -47,6 +50,20 @@ struct GlucoseChartView: View {
                 .foregroundStyle(.blue)
             }
 
+            // Fingersticks: hollow dots in the band color so they read apart from the CGM line.
+            ForEach(fingersticks) { stick in
+                PointMark(
+                    x: .value("Time", stick.timestamp),
+                    y: .value("mg/dL", stick.value)
+                )
+                .symbol {
+                    Circle()
+                        .strokeBorder(stick.range.color, lineWidth: 2)
+                        .background(Circle().fill(Color(.systemBackground)))
+                        .frame(width: 11, height: 11)
+                }
+            }
+
             if let selectedReading {
                 // The header shows the selected value and time, so the rule stays bare.
                 RuleMark(x: .value("Selected", selectedReading.timestamp))
@@ -71,9 +88,14 @@ struct GlucoseChartView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(values: [40, 70, 120, 180, 250, 300]) { value in
+            AxisMarks(position: .trailing, values: [40, 70, 120, 180, 250, 300]) { value in
                 AxisGridLine()
-                AxisValueLabel()
+                AxisValueLabel {
+                    if let mgdl = value.as(Int.self) {
+                        Text("\(mgdl)")
+                            .frame(width: chartAxisLabelWidth, alignment: .trailing)
+                    }
+                }
             }
         }
         .frame(height: 260)

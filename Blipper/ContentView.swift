@@ -10,8 +10,11 @@ import SwiftUI
 struct ContentView: View {
     @State private var model: GlucoseViewModel
 
-    init(provider: any GlucoseDataProvider = MockGlucoseProvider()) {
-        _model = State(initialValue: GlucoseViewModel(provider: provider))
+    init(
+        provider: any GlucoseDataProvider = MockGlucoseProvider(),
+        therapyProvider: (any TherapyDataProvider)? = MockTherapyProvider()
+    ) {
+        _model = State(initialValue: GlucoseViewModel(provider: provider, therapyProvider: therapyProvider))
     }
 
     var body: some View {
@@ -36,12 +39,29 @@ struct ContentView: View {
 
                     GlucoseChartView(
                         readings: model.windowReadings,
+                        fingersticks: model.windowTherapy.fingersticks,
                         interval: model.windowInterval,
                         selectedReading: model.selectedReading,
                         selectedTime: $model.selectedTime
                     )
 
+                    if model.hasTherapy {
+                        TherapyChartView(
+                            therapy: model.windowTherapy,
+                            interval: model.windowInterval,
+                            selectedTime: $model.selectedTime
+                        )
+
+                        if let events = model.selectedEvents, !events.isEmpty {
+                            SelectedEventsLabel(events: events)
+                        }
+                    }
+
                     SummaryTilesView(stats: model.stats)
+
+                    if model.hasTherapy {
+                        TherapyTilesView(therapy: model.windowTherapy, interval: model.windowInterval)
+                    }
 
                     RangeBreakdownView(stats: model.stats)
 

@@ -24,6 +24,7 @@ final class GlucoseViewModel {
     static let refreshInterval: Duration = .seconds(5 * 60)
 
     private let provider: any GlucoseDataProvider
+    private let therapyProvider: (any TherapyDataProvider)?
     private let calendar: Calendar
 
     /// Start of the day being displayed.
@@ -35,15 +36,23 @@ final class GlucoseViewModel {
     var selectedTime: Date?
 
     private(set) var dayReadings: [GlucoseReading] = []
+    private(set) var dayTherapy: TherapyData = .empty
     private(set) var isLoading = false
     private(set) var lastUpdated: Date?
     private(set) var errorMessage: String?
 
-    init(provider: any GlucoseDataProvider = MockGlucoseProvider(), calendar: Calendar = .current) {
+    init(
+        provider: any GlucoseDataProvider = MockGlucoseProvider(),
+        therapyProvider: (any TherapyDataProvider)? = MockTherapyProvider(),
+        calendar: Calendar = .current
+    ) {
         self.provider = provider
+        self.therapyProvider = therapyProvider
         self.calendar = calendar
         self.day = calendar.startOfDay(for: Date())
     }
+
+    var hasTherapy: Bool { therapyProvider != nil }
 
     // MARK: Derived state
 
@@ -67,7 +76,32 @@ final class GlucoseViewModel {
         return dayReadings.filter { interval.contains($0.timestamp) }
     }
 
+    var windowTherapy: TherapyData { dayTherapy.clipped(to: windowInterval) }
+
     var stats: GlucoseStats { GlucoseStats(readings: windowReadings) }
+
+    /// Therapy events near `selectedTime`: the basal rate in effect, and any bolus or carbs
+    /// within 15 minutes, for a one-line caption under the chart.
+    var selectedEvents: SelectedEvents? {
+        guard let selectedTime else { return nil }
+        let tolerance: TimeInterval = 15 * 60
+        let therapy = windowTherapy
+        return SelectedEvents(
+            basal: therapy.basalRate(at: selectedTime),
+            bolus: therapy.boluses.filter { abs($0.timestamp.timeIntervalSince(selectedTime)) <= tolerance }.reduce(0) { $0 + $1.total },
+            carbs: therapy.carbs.filter { abs($0.timestamp.timeIntervalSince(selectedTime)) <= tolerance }.reduce(0) { $0 + $1.grams },
+            fingerstick: therapy.fingersticks.first { abs($0.timestamp.timeIntervalSince(selectedTime)) <= tolerance }
+        )
+    }
+
+    struct SelectedEvents {
+        let basal: BasalSegment?
+        let bolus: Double
+        let carbs: Double
+        let fingerstick: BGMReading?
+
+        var isEmpty: Bool { basal == nil && bolus == 0 && carbs == 0 && fingerstick == nil }
+    }
 
     var latestReading: GlucoseReading? { windowReadings.last }
 
@@ -90,7 +124,10 @@ final class GlucoseViewModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            dayReadings = try await provider.readings(in: dayInterval)
+            let interval = dayInterval
+            async let readings = provider.readings(in: interval)
+            async let therapy = therapyProvider?.therapy(in: interval) ?? .empty
+            (dayReadings, dayTherapy) = try await (readings, therapy)
             lastUpdated = Date()
             errorMessage = nil
         } catch is CancellationError {
@@ -123,6 +160,7 @@ final class GlucoseViewModel {
         day = calendar.startOfDay(for: newDay)
         selectedTime = nil
         dayReadings = []
+        dayTherapy = .empty
         Task { await load() }
     }
 

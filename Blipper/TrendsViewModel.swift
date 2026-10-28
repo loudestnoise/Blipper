@@ -13,6 +13,7 @@ enum TrendPeriod: Int, CaseIterable, Identifiable {
     case quarter = 90
 
     var id: Int { rawValue }
+    var days: Int { rawValue }
     var label: String { "\(rawValue)d" }
     var longLabel: String { "\(rawValue) days" }
 }

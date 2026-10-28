@@ -19,8 +19,12 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 **Today** – a glucose timeline for any day, with a shaded 70–180 mg/dL target band.
 - Tap or drag on the chart to scrub; the header shows the selected reading and time.
 - Switch between 3 h, 6 h, 12 h, and 24 h windows and step between days.
-- Summary tiles for time in range, average, and reading count, plus a five-band breakdown (very low, low, in range, high, very high).
+- Insulin and carbs under the glucose chart: boluses as bars (closed-loop automatic boluses as thin ticks), carb entries along the top, and basal rate as a step chart colored by scheduled, temp, automated, or suspended.
+- Fingerstick readings appear as hollow dots on the glucose chart; scrubbing shows the basal rate in effect and any nearby bolus, carbs, or fingerstick.
+- Summary tiles for time in range, average, and reading count, bolus, basal, and carb totals, plus a five-band breakdown (very low, low, in range, high, very high).
 - Auto-refreshes every 5 minutes, with pull-to-refresh.
+
+**BG Log** – blood glucose meter (fingerstick) readings for the last 7, 14, 30, or 90 days, grouped by day with count, average, and in-range summary.
 
 **Trends** – 7, 14, 30, or 90 day reports.
 - Time in range with change versus the previous period.
@@ -51,12 +55,12 @@ Two launch arguments are available in Debug builds (set them in the scheme's *Ar
 | Argument | Effect |
 | --- | --- |
 | `-useMockData` | Skips login and uses a deterministic mock CGM trace. |
-| `-initialTab today\|trends\|settings` | Opens on the given tab. |
+| `-initialTab today\|trends\|log\|settings` | Opens on the given tab. |
 
 ## Architecture
 
 - `Models/` – `GlucoseReading`, range classification and statistics, AGP and daily aggregation, device and settings models.
-- `Data/` – a protocol-based data layer. `GlucoseDataProvider` and `DeviceInfoProvider` have both a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
+- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), and `DeviceInfoProvider` each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
 - `Views/` – SwiftUI views using Swift Charts.
 - View models are `@Observable` and `@MainActor`; the data layer is `nonisolated` and `Sendable`.
 

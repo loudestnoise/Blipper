@@ -10,9 +10,9 @@ struct SummaryTilesView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            tile(title: "In Range", value: percentText(stats.timeInRange), tint: .green)
-            tile(title: "Average", value: averageText, unit: "mg/dL", tint: .blue)
-            tile(title: "Readings", value: "\(stats.count)", tint: .secondary)
+            StatTile(title: "In Range", value: percentText(stats.timeInRange), tint: .green)
+            StatTile(title: "Average", value: averageText, unit: "mg/dL", tint: .blue)
+            StatTile(title: "Readings", value: "\(stats.count)", tint: .secondary)
         }
     }
 
@@ -26,7 +26,16 @@ struct SummaryTilesView: View {
         return fraction.formatted(.percent.precision(.fractionLength(0)))
     }
 
-    private func tile(title: String, value: String, unit: String? = nil, tint: Color) -> some View {
+}
+
+/// A small labeled number, used in rows of three.
+struct StatTile: View {
+    let title: String
+    let value: String
+    var unit: String? = nil
+    let tint: Color
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)

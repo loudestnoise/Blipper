@@ -18,6 +18,7 @@ struct BlipperApp: App {
             } else if let provider = session.provider {
                 MainTabView(
                     glucoseProvider: provider,
+                    therapyProvider: provider,
                     deviceProvider: provider,
                     email: session.email,
                     onSignOut: session.signOut,
@@ -41,7 +42,7 @@ struct BlipperApp: App {
         #endif
     }
 
-    /// `-initialTab today|trends|settings` picks the starting tab (Debug builds only).
+    /// `-initialTab today|trends|log|settings` picks the starting tab (Debug builds only).
     private static var initialTab: MainTabView.Tab {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments

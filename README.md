@@ -10,9 +10,9 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 
 ## Screenshots
 
-| Today | Trends | Settings | Device detail |
-| :---: | :---: | :---: | :---: |
-| ![Today tab: glucose timeline with target band](docs/screenshots/today.png) | ![Trends tab: time in range, stats, and AGP](docs/screenshots/trends.png) | ![Settings tab: account, devices, targets](docs/screenshots/settings.png) | ![Device detail: Omnipod 5 pump settings](docs/screenshots/op5.png) |
+| Today | Trends | BG Log | Settings | Device detail |
+| :---: | :---: | :---: | :---: | :---: |
+| ![Today tab: glucose timeline with insulin, carbs, and basal](docs/screenshots/Today.png) | ![Trends tab: time in range, stats, and AGP](docs/screenshots/trends.png) | ![BG Log tab: meter readings by day](docs/screenshots/BG_Log.png) | ![Settings tab: account, devices, targets](docs/screenshots/settings.png) | ![Device detail: Omnipod 5 pump settings](docs/screenshots/op5.png) |
 
 ## Features
 

@@ -174,3 +174,25 @@ extension TidepoolGlucoseProvider: ShareProvider {
         }
     }
 }
+
+// MARK: - Data connections
+
+extension TidepoolGlucoseProvider: DataConnectionProvider {
+    func dataSources() async throws -> [DataSource] {
+        try await withSession { session in
+            try await client.dataSources(session: session)
+        }
+    }
+
+    func authorizationURL(for provider: DataProvider) async throws -> URL {
+        try await withSession { session in
+            try await client.authorizationURL(session: session, provider: provider)
+        }
+    }
+
+    func disconnect(_ provider: DataProvider) async throws {
+        try await withSession { session in
+            try await client.revokeAuthorization(session: session, provider: provider)
+        }
+    }
+}

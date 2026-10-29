@@ -116,7 +116,7 @@ extension TidepoolClient {
                     clinicID: $0.clinicId?.nilIfEmpty,
                     status: $0.status,
                     permissions: SharePermissions(keys: $0.context?.keys ?? []),
-                    created: $0.created.flatMap(Self.parseInviteTime)
+                    created: $0.created.flatMap(Self.parseISOTime)
                 )
             }
         Self.shareLog.notice("invites: \(invites.count) open")
@@ -180,11 +180,12 @@ extension TidepoolClient {
 
     // MARK: Request plumbing
 
-    private func send<B: Encodable>(session: TidepoolSession, method: String, path: String, body: B) async throws -> Data {
+    /// Sends an authenticated JSON request and maps Tidepool's status codes to `TidepoolError`.
+    func send<B: Encodable>(session: TidepoolSession, method: String, path: String, body: B) async throws -> Data {
         try await send(session: session, method: method, path: path, rawBody: try JSONEncoder().encode(body))
     }
 
-    private func send(session: TidepoolSession, method: String, path: String, rawBody: Data? = nil) async throws -> Data {
+    func send(session: TidepoolSession, method: String, path: String, rawBody: Data? = nil) async throws -> Data {
         var request = URLRequest(url: Self.base.appending(path: path))
         request.httpMethod = method
         request.setValue(session.token, forHTTPHeaderField: "X-Tidepool-Session-Token")
@@ -222,7 +223,7 @@ extension TidepoolClient {
         return email.hasPrefix("bigdata") && email.hasSuffix("@tidepool.org")
     }
 
-    private static let inviteTimeParsers: [ISO8601DateFormatter] = {
+    private static let isoTimeParsers: [ISO8601DateFormatter] = {
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let whole = ISO8601DateFormatter()
@@ -230,8 +231,9 @@ extension TidepoolClient {
         return [fractional, whole]
     }()
 
-    private static func parseInviteTime(_ string: String) -> Date? {
-        for parser in inviteTimeParsers {
+    /// RFC 3339 with or without fractional seconds, as Tidepool services emit.
+    static func parseISOTime(_ string: String) -> Date? {
+        for parser in isoTimeParsers {
             if let date = parser.date(from: string) { return date }
         }
         return nil

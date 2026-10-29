@@ -39,6 +39,11 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 - Share with a care team member by email, with the same upload choice.
 - See who is sharing and which invites are still pending, allow or remove upload permission, resend a care team invite, revoke an invite, remove a member, or leave a clinic.
 
+**Data Connections** (under Settings) – the cloud-to-cloud connections Tidepool supports: Dexcom, twiist, and FreeStyle Libre (LibreView).
+- Each provider shows its logo and connection status with the same wording as Tidepool Web: connected with the time of the last data, awaiting data, error, or not connected.
+- Connect or Reconnect asks Tidepool for a one-time authorization link and opens the provider's own sign-in in an in-app Safari sheet. Tidepool completes the OAuth exchange on its side; when the sheet closes, the status refreshes.
+- Disconnect revokes Tidepool's authorization with the provider. FreeStyle Libre also needs to be disconnected in the LibreView app, and the screen says so.
+
 ## Requirements
 
 - Xcode 27 or later
@@ -51,7 +56,7 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 2. Select your own development team under *Signing & Capabilities*. The app uses a Keychain access group entitlement, so it must be built signed.
 3. Run on a simulator or device and sign in with your Tidepool email and password.
 
-Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data and to manage sharing. They are never written to logs or sent anywhere else.
+Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data and to manage sharing and data connections. They are never written to logs or sent anywhere else. Connecting a data provider opens that provider's sign-in page in an in-app Safari view; Blipper never sees those credentials.
 
 ### Developing without an account
 
@@ -63,11 +68,12 @@ Two launch arguments are available in Debug builds (set them in the scheme's *Ar
 | `-initialTab today\|trends\|log\|settings` | Opens on the given tab. |
 | `-openSharing` | Starts on the Sharing screen (use with `-initialTab settings`). |
 | `-openShareInvite` | Also presents the share invite form. |
+| `-openDataConnections` | Starts on the Data Connections screen (use with `-initialTab settings`). |
 
 ## Architecture
 
 - `Models/` – `GlucoseReading`, range classification and statistics, AGP and daily aggregation, device and settings models.
-- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, and `ShareProvider` (clinic and care team sharing) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
+- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, `ShareProvider` (clinic and care team sharing), and `DataConnectionProvider` (Dexcom, twiist, and LibreView links) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
 - `Views/` – SwiftUI views using Swift Charts.
 - View models are `@Observable` and `@MainActor`; the data layer is `nonisolated` and `Sendable`.
 

@@ -34,6 +34,11 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 
 **Settings** – your Tidepool account, devices that uploaded in the last 30 days with their latest pump and CGM settings, target thresholds, and app info.
 
+**Sharing** (under Settings) – the same share flow as the Share page in Tidepool Web.
+- Share with a clinic: enter the 12-digit share code, confirm the clinic name that comes back, choose whether the clinic may upload, and send the invite.
+- Share with a care team member by email, with the same upload choice.
+- See who is sharing and which invites are still pending, allow or remove upload permission, resend a care team invite, revoke an invite, remove a member, or leave a clinic.
+
 ## Requirements
 
 - Xcode 27 or later
@@ -46,7 +51,7 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 2. Select your own development team under *Signing & Capabilities*. The app uses a Keychain access group entitlement, so it must be built signed.
 3. Run on a simulator or device and sign in with your Tidepool email and password.
 
-Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data. They are never written to logs or sent anywhere else.
+Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data and to manage sharing. They are never written to logs or sent anywhere else.
 
 ### Developing without an account
 
@@ -56,11 +61,13 @@ Two launch arguments are available in Debug builds (set them in the scheme's *Ar
 | --- | --- |
 | `-useMockData` | Skips login and uses a deterministic mock CGM trace. |
 | `-initialTab today\|trends\|log\|settings` | Opens on the given tab. |
+| `-openSharing` | Starts on the Sharing screen (use with `-initialTab settings`). |
+| `-openShareInvite` | Also presents the share invite form. |
 
 ## Architecture
 
 - `Models/` – `GlucoseReading`, range classification and statistics, AGP and daily aggregation, device and settings models.
-- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), and `DeviceInfoProvider` each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
+- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, and `ShareProvider` (clinic and care team sharing) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
 - `Views/` – SwiftUI views using Swift Charts.
 - View models are `@Observable` and `@MainActor`; the data layer is `nonisolated` and `Sendable`.
 

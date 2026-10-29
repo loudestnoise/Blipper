@@ -13,6 +13,7 @@ struct MainTabView: View {
     let glucoseProvider: any GlucoseDataProvider
     let therapyProvider: any TherapyDataProvider
     let deviceProvider: any DeviceInfoProvider
+    let shareProvider: any ShareProvider
     let email: String?
     let onSignOut: () -> Void
 
@@ -22,6 +23,7 @@ struct MainTabView: View {
         glucoseProvider: any GlucoseDataProvider = MockGlucoseProvider(),
         therapyProvider: any TherapyDataProvider = MockTherapyProvider(),
         deviceProvider: any DeviceInfoProvider = MockDeviceInfoProvider(),
+        shareProvider: any ShareProvider = MockShareProvider(),
         email: String? = nil,
         onSignOut: @escaping () -> Void = {},
         initialTab: Tab = .today
@@ -29,6 +31,7 @@ struct MainTabView: View {
         self.glucoseProvider = glucoseProvider
         self.therapyProvider = therapyProvider
         self.deviceProvider = deviceProvider
+        self.shareProvider = shareProvider
         self.email = email
         self.onSignOut = onSignOut
         _selection = State(initialValue: initialTab)
@@ -48,7 +51,7 @@ struct MainTabView: View {
                 .tabItem { Label("BG Log", systemImage: "drop") }
                 .tag(Tab.log)
 
-            SettingsView(email: email, deviceProvider: deviceProvider, onSignOut: onSignOut)
+            SettingsView(email: email, deviceProvider: deviceProvider, shareProvider: shareProvider, onSignOut: onSignOut)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(Tab.settings)
         }

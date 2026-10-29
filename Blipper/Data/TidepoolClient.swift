@@ -11,12 +11,18 @@ import OSLog
 
 nonisolated enum TidepoolError: LocalizedError {
     case invalidCredentials
+    case forbidden
+    case notFound
+    case conflict(String?)
     case http(Int)
     case badResponse
 
     var errorDescription: String? {
         switch self {
         case .invalidCredentials: "Login failed. Check the email and password."
+        case .forbidden: "Tidepool did not allow that action for this account."
+        case .notFound: "Tidepool could not find that."
+        case .conflict(let reason): reason ?? "Tidepool rejected the request because it conflicts with existing sharing."
         case .http(let code): "Tidepool request failed (\(code))."
         case .badResponse: "Unexpected response from Tidepool."
         }

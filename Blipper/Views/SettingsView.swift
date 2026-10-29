@@ -8,29 +8,54 @@ import SwiftUI
 struct SettingsView: View {
     let email: String?
     let deviceProvider: any DeviceInfoProvider
+    let shareProvider: any ShareProvider
     let onSignOut: () -> Void
 
     @State private var devices: [DeviceInfo] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var confirmSignOut = false
+    @State private var path: [SettingsRoute] = Self.openSharingOnLaunch ? [.sharing] : []
+
+    private enum SettingsRoute: Hashable {
+        case sharing
+        case device(String)
+    }
+
+    /// `-openSharing` starts on the Sharing screen (Debug builds only).
+    private static var openSharingOnLaunch: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-openSharing")
+        #else
+        false
+        #endif
+    }
 
     init(
         email: String? = nil,
         deviceProvider: any DeviceInfoProvider = MockDeviceInfoProvider(),
+        shareProvider: any ShareProvider = MockShareProvider(),
         onSignOut: @escaping () -> Void = {}
     ) {
         self.email = email
         self.deviceProvider = deviceProvider
+        self.shareProvider = shareProvider
         self.onSignOut = onSignOut
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Form {
-                Section("Account") {
+                Section {
                     LabeledContent("Tidepool", value: email ?? "Mock data")
+                    NavigationLink(value: SettingsRoute.sharing) {
+                        Label("Sharing", systemImage: "person.2")
+                    }
                     Button("Sign Out", role: .destructive) { confirmSignOut = true }
+                } header: {
+                    Text("Account")
+                } footer: {
+                    Text("Sharing lets clinics and care team members view your Tidepool data, as on the Share page of Tidepool Web.")
                 }
 
                 Section {
@@ -46,7 +71,7 @@ struct SettingsView: View {
                         }
                     }
                     ForEach(devices) { device in
-                        NavigationLink(value: device.id) {
+                        NavigationLink(value: SettingsRoute.device(device.id)) {
                             DeviceRow(device: device)
                         }
                     }
@@ -85,9 +110,14 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: String.self) { id in
-                if let device = devices.first(where: { $0.id == id }) {
-                    DeviceDetailView(device: device)
+            .navigationDestination(for: SettingsRoute.self) { route in
+                switch route {
+                case .sharing:
+                    ShareView(provider: shareProvider)
+                case .device(let id):
+                    if let device = devices.first(where: { $0.id == id }) {
+                        DeviceDetailView(device: device)
+                    }
                 }
             }
             .refreshable { await load() }

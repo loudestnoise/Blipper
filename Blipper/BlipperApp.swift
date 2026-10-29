@@ -20,6 +20,7 @@ struct BlipperApp: App {
                     glucoseProvider: provider,
                     therapyProvider: provider,
                     deviceProvider: provider,
+                    shareProvider: provider,
                     email: session.email,
                     onSignOut: session.signOut,
                     initialTab: Self.initialTab

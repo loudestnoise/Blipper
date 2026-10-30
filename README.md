@@ -77,7 +77,7 @@ Two launch arguments are available in Debug builds (set them in the scheme's *Ar
 - `Views/` – SwiftUI views using Swift Charts.
 - View models are `@Observable` and `@MainActor`; the data layer is `nonisolated` and `Sendable`.
 
-Diagnostic logging uses OSLog (subsystem `com.PickleTron.Blipper`) and records counts and field names only, never glucose values or account details.
+Diagnostic logging uses OSLog (subsystem `com.PickleTron.blipper`) and records counts and field names only, never glucose values or account details.
 
 ## License
 

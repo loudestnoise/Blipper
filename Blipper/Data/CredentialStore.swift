@@ -13,7 +13,7 @@ nonisolated struct TidepoolCredentials: Sendable, Equatable {
 
 /// Keeps the Tidepool login in the Keychain so it survives relaunches without touching disk in plain text.
 nonisolated enum CredentialStore {
-    private static let service = "com.PickleTron.Blipper.tidepool"
+    private static let service = "com.PickleTron.blipper.tidepool"
     private static let emailAccount = "email"
     private static let passwordAccount = "password"
 

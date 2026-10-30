@@ -37,7 +37,7 @@ nonisolated struct SentInvite: Sendable {
 }
 
 extension TidepoolClient {
-    private static let shareLog = Logger(subsystem: "com.PickleTron.Blipper", category: "sharing")
+    private static let shareLog = Logger(subsystem: "com.PickleTron.blipper", category: "sharing")
 
     // MARK: Lookups
 

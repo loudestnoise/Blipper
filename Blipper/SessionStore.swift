@@ -25,7 +25,7 @@ final class SessionStore {
         let saved = CredentialStore.load()
         credentials = saved
         provider = saved.map { TidepoolGlucoseProvider(credentials: $0, client: client) }
-        Logger(subsystem: "com.PickleTron.Blipper", category: "session")
+        Logger(subsystem: "com.PickleTron.blipper", category: "session")
             .notice("session: saved credentials \(saved == nil ? "absent" : "present", privacy: .public)")
     }
 

@@ -216,7 +216,7 @@ nonisolated struct TidepoolClient: Sendable {
         return data
     }
 
-    private static let log = Logger(subsystem: "com.PickleTron.Blipper", category: "tidepool")
+    private static let log = Logger(subsystem: "com.PickleTron.blipper", category: "tidepool")
 
     /// Decodes a record list, dropping (and counting) records that don't fit `R`.
     private static func decodeLenient<R: Decodable>(_ type: R.Type, from data: Data, what: String) throws -> [R] {

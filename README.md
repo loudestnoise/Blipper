@@ -32,6 +32,11 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 - Ambulatory glucose profile (AGP) with median and 25–75 / 5–95 percentile bands.
 - Daily stacked range bars.
 
+**Notes** – notes as in Tidepool Mobile, stored in your Tidepool account alongside the notes from Tidepool Web.
+- Tap + to write a note and set the date and time it is about.
+- Notes are listed newest first with their time, and the author when a care team member wrote them.
+- Tap a note to open its glucose, insulin, carb, and basal graph, marked at the note's time; swipe the graph to see up to 7 hours before the note. Opening another note closes the one that was open. A new note opens its graph as soon as it is saved.
+
 **Settings** – your Tidepool account, devices that uploaded in the last 30 days with their latest pump and CGM settings, target thresholds, and app info.
 
 **Sharing** (under Settings) – the same share flow as the Share page in Tidepool Web.
@@ -56,7 +61,7 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 2. Select your own development team under *Signing & Capabilities*. The app uses a Keychain access group entitlement, so it must be built signed.
 3. Run on a simulator or device and sign in with your Tidepool email and password.
 
-Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data and to manage sharing and data connections. They are never written to logs or sent anywhere else. Connecting a data provider opens that provider's sign-in page in an in-app Safari view; Blipper never sees those credentials.
+Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data, save notes, and manage sharing and data connections. They are never written to logs or sent anywhere else. Connecting a data provider opens that provider's sign-in page in an in-app Safari view; Blipper never sees those credentials.
 
 ### Developing without an account
 
@@ -65,15 +70,17 @@ Two launch arguments are available in Debug builds (set them in the scheme's *Ar
 | Argument | Effect |
 | --- | --- |
 | `-useMockData` | Skips login and uses a deterministic mock CGM trace. |
-| `-initialTab today\|trends\|log\|settings` | Opens on the given tab. |
+| `-initialTab today\|trends\|log\|notes\|settings` | Opens on the given tab. |
 | `-openSharing` | Starts on the Sharing screen (use with `-initialTab settings`). |
 | `-openShareInvite` | Also presents the share invite form. |
 | `-openDataConnections` | Starts on the Data Connections screen (use with `-initialTab settings`). |
+| `-openNewNote` | Starts with the new note form open (use with `-initialTab notes`). |
+| `-openFirstNote` | Opens the newest note's graph once notes load (use with `-initialTab notes`). |
 
 ## Architecture
 
 - `Models/` – `GlucoseReading`, range classification and statistics, AGP and daily aggregation, device and settings models.
-- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, `ShareProvider` (clinic and care team sharing), and `DataConnectionProvider` (Dexcom, twiist, and LibreView links) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
+- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, `ShareProvider` (clinic and care team sharing), and `DataConnectionProvider` (Dexcom, twiist, and LibreView links), and `NoteProvider` (notes in Tidepool's message service) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
 - `Views/` – SwiftUI views using Swift Charts.
 - View models are `@Observable` and `@MainActor`; the data layer is `nonisolated` and `Sendable`.
 

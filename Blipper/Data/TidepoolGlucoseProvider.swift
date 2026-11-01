@@ -196,3 +196,19 @@ extension TidepoolGlucoseProvider: DataConnectionProvider {
         }
     }
 }
+
+// MARK: - Notes
+
+extension TidepoolGlucoseProvider: NoteProvider {
+    func notes() async throws -> [Note] {
+        try await withSession { session in
+            try await client.notes(session: session)
+        }
+    }
+
+    func addNote(text: String, timestamp: Date) async throws -> Note {
+        try await withSession { session in
+            try await client.addNote(session: session, text: text, timestamp: timestamp)
+        }
+    }
+}

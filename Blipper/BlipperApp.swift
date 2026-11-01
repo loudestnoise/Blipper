@@ -22,6 +22,7 @@ struct BlipperApp: App {
                     deviceProvider: provider,
                     shareProvider: provider,
                     dataConnectionProvider: provider,
+                    noteProvider: provider,
                     email: session.email,
                     onSignOut: session.signOut,
                     initialTab: Self.initialTab
@@ -44,7 +45,7 @@ struct BlipperApp: App {
         #endif
     }
 
-    /// `-initialTab today|trends|log|settings` picks the starting tab (Debug builds only).
+    /// `-initialTab today|trends|log|notes|settings` picks the starting tab (Debug builds only).
     private static var initialTab: MainTabView.Tab {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments

@@ -7,7 +7,7 @@ import SwiftUI
 
 struct MainTabView: View {
     enum Tab: String {
-        case today, trends, log, settings
+        case today, trends, log, notes, settings
     }
 
     let glucoseProvider: any GlucoseDataProvider
@@ -15,6 +15,7 @@ struct MainTabView: View {
     let deviceProvider: any DeviceInfoProvider
     let shareProvider: any ShareProvider
     let dataConnectionProvider: any DataConnectionProvider
+    let noteProvider: any NoteProvider
     let email: String?
     let onSignOut: () -> Void
 
@@ -26,6 +27,7 @@ struct MainTabView: View {
         deviceProvider: any DeviceInfoProvider = MockDeviceInfoProvider(),
         shareProvider: any ShareProvider = MockShareProvider(),
         dataConnectionProvider: any DataConnectionProvider = MockDataConnectionProvider(),
+        noteProvider: any NoteProvider = MockNoteProvider(),
         email: String? = nil,
         onSignOut: @escaping () -> Void = {},
         initialTab: Tab = .today
@@ -35,6 +37,7 @@ struct MainTabView: View {
         self.deviceProvider = deviceProvider
         self.shareProvider = shareProvider
         self.dataConnectionProvider = dataConnectionProvider
+        self.noteProvider = noteProvider
         self.email = email
         self.onSignOut = onSignOut
         _selection = State(initialValue: initialTab)
@@ -53,6 +56,10 @@ struct MainTabView: View {
             BGLogView(provider: therapyProvider)
                 .tabItem { Label("BG Log", systemImage: "drop") }
                 .tag(Tab.log)
+
+            NotesView(provider: noteProvider, glucoseProvider: glucoseProvider, therapyProvider: therapyProvider)
+                .tabItem { Label("Notes", systemImage: "note.text") }
+                .tag(Tab.notes)
 
             SettingsView(
                 email: email,

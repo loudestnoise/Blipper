@@ -16,24 +16,29 @@ struct TherapyChartView: View {
     let therapy: TherapyData
     let interval: DateInterval
     @Binding var selectedTime: Date?
+    /// A moment to mark with a vertical line, such as a note's time.
+    var marker: Date? = nil
+    /// When set, the charts show part of `interval` and scroll sideways instead of selecting.
+    var scroll: ChartScroll? = nil
 
     static let bolusColor = Color(red: 0.00, green: 0.48, blue: 0.80)
     static let carbColor = Color(red: 0.95, green: 0.60, blue: 0.10)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            chartLabel("Insulin & Carbs", trailing: dosesSummary)
+            // Totals cover all of `interval`, which is misleading when only part of it is in view.
+            chartLabel("Insulin & Carbs", trailing: scroll == nil ? dosesSummary : "")
             dosesChart
                 .frame(height: 90)
 
-            chartLabel("Basal", trailing: basalSummary)
+            chartLabel("Basal", trailing: scroll == nil ? basalSummary : "")
                 .padding(.top, 10)
             basalChart
                 .frame(height: 60)
         }
     }
 
-    private var hourStride: Int { GlucoseChartView.hourStride(for: interval) }
+    private var hourStride: Int { GlucoseChartView.hourStride(for: scroll?.visibleInterval ?? interval) }
 
     // MARK: Boluses and carbs
 
@@ -85,6 +90,12 @@ struct TherapyChartView: View {
                 }
             }
 
+            if let marker {
+                RuleMark(x: .value("Marker", marker))
+                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+            }
+
             if let selectedTime {
                 RuleMark(x: .value("Selected", selectedTime))
                     .foregroundStyle(.secondary)
@@ -93,7 +104,7 @@ struct TherapyChartView: View {
         }
         .chartXScale(domain: interval.start...interval.end)
         .chartYScale(domain: 0...top)
-        .chartXSelection(value: $selectedTime)
+        .chartXInteraction(scroll: scroll, selection: $selectedTime)
         .chartXAxis { AxisMarks(values: .stride(by: .hour, count: hourStride)) { _ in AxisGridLine() } }
         .chartYAxis {
             AxisMarks(position: .trailing, values: [0, top / 2].map { ($0 * 2).rounded() / 2 }) { value in
@@ -133,6 +144,12 @@ struct TherapyChartView: View {
                 .foregroundStyle(Self.basalStyle(segment.kind))
             }
 
+            if let marker {
+                RuleMark(x: .value("Marker", marker))
+                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+            }
+
             if let selectedTime {
                 RuleMark(x: .value("Selected", selectedTime))
                     .foregroundStyle(.secondary)
@@ -141,7 +158,7 @@ struct TherapyChartView: View {
         }
         .chartXScale(domain: interval.start...interval.end)
         .chartYScale(domain: 0...top)
-        .chartXSelection(value: $selectedTime)
+        .chartXInteraction(scroll: scroll, selection: $selectedTime)
         .chartXAxis { AxisMarks(values: .stride(by: .hour, count: hourStride)) { _ in AxisGridLine() } }
         .chartYAxis {
             AxisMarks(position: .trailing, values: [0, top]) { value in

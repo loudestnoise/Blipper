@@ -27,6 +27,8 @@ final class TrendsViewModel {
     var period: TrendPeriod = .twoWeeks {
         didSet { if period != oldValue { Task { await load() } } }
     }
+    /// Start of the last day shown. Stepping back moves it by one period; changing the period keeps it.
+    private(set) var endDay: Date
 
     private(set) var readings: [GlucoseReading] = []
     private(set) var previousReadings: [GlucoseReading] = []
@@ -37,15 +39,18 @@ final class TrendsViewModel {
     init(provider: any GlucoseDataProvider, calendar: Calendar = .current) {
         self.provider = provider
         self.calendar = calendar
+        self.endDay = calendar.startOfDay(for: Date())
     }
 
     // MARK: Derived state
 
-    /// Whole calendar days: the last `period` days through now.
+    var isCurrent: Bool { endDay >= calendar.startOfDay(for: Date()) }
+    var canGoForward: Bool { !isCurrent }
+
+    /// Whole calendar days: `period` days ending with `endDay`, through now when that is today.
     var interval: DateInterval {
-        let end = Date()
-        let today = calendar.startOfDay(for: end)
-        let start = calendar.date(byAdding: .day, value: -(period.rawValue - 1), to: today) ?? today
+        let end = isCurrent ? Date() : calendar.date(byAdding: .day, value: 1, to: endDay) ?? endDay.addingTimeInterval(86_400)
+        let start = calendar.date(byAdding: .day, value: -(period.rawValue - 1), to: endDay) ?? endDay
         return DateInterval(start: start, end: end)
     }
 
@@ -71,6 +76,23 @@ final class TrendsViewModel {
     var daily: [DailyStats] { DailyStats.byDay(readings: readings, in: interval, calendar: calendar) }
 
     // MARK: Actions
+
+    func previousPeriod() {
+        guard let earlier = calendar.date(byAdding: .day, value: -period.rawValue, to: endDay) else { return }
+        moveTo(earlier)
+    }
+
+    func nextPeriod() {
+        guard canGoForward, let later = calendar.date(byAdding: .day, value: period.rawValue, to: endDay) else { return }
+        moveTo(min(later, calendar.startOfDay(for: Date())))
+    }
+
+    private func moveTo(_ day: Date) {
+        endDay = calendar.startOfDay(for: day)
+        readings = []
+        previousReadings = []
+        Task { await load() }
+    }
 
     func load() async {
         isLoading = true

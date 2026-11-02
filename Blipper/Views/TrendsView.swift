@@ -17,16 +17,20 @@ struct TrendsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    DateNavigator(
+                        title: rangeTitle,
+                        unit: "period",
+                        canGoForward: model.canGoForward,
+                        onPrevious: model.previousPeriod,
+                        onNext: model.nextPeriod
+                    )
+
                     Picker("Period", selection: $model.period) {
                         ForEach(TrendPeriod.allCases) { period in
                             Text(period.label).tag(period)
                         }
                     }
                     .pickerStyle(.segmented)
-
-                    Text(model.interval.start, format: .dateTime.month(.abbreviated).day())
-                        + Text(" – ")
-                        + Text(model.interval.end, format: .dateTime.month(.abbreviated).day())
 
                     TimeInRangeCard(stats: model.stats, change: model.timeInRangeChange, period: model.period)
 
@@ -63,6 +67,16 @@ struct TrendsView: View {
             .refreshable { await model.load() }
             .task { await model.load() }
         }
+    }
+
+    /// First and last day shown, with the year once the range leaves the current year.
+    private var rangeTitle: Text {
+        let interval = model.interval
+        // The interval ends at midnight after the last day unless it runs through now.
+        let lastDay = interval.end.addingTimeInterval(-1)
+        let showsYear = !Calendar.current.isDate(interval.start, equalTo: Date(), toGranularity: .year)
+        let style = showsYear ? Date.FormatStyle.dateTime.month(.abbreviated).day().year() : .dateTime.month(.abbreviated).day()
+        return Text("\(interval.start, format: style) – \(lastDay, format: style)")
     }
 }
 

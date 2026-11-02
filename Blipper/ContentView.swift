@@ -23,8 +23,9 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     ReadingHeader(reading: model.headerReading, isSelection: model.selectedReading != nil)
 
-                    DayNavigator(
-                        day: model.day,
+                    DateNavigator(
+                        title: Text(model.day, format: .dateTime.weekday(.wide).month().day()),
+                        unit: "day",
                         canGoForward: model.canGoForward,
                         onPrevious: model.previousDay,
                         onNext: model.nextDay
@@ -154,10 +155,13 @@ private struct ReadingHeader: View {
     }
 }
 
-// MARK: - Day navigation
+// MARK: - Date navigation
 
-private struct DayNavigator: View {
-    let day: Date
+/// Back and forward buttons around a title, for stepping through days or longer periods.
+struct DateNavigator: View {
+    let title: Text
+    /// What one step covers, for VoiceOver: "Previous day", "Next period".
+    let unit: String
     let canGoForward: Bool
     let onPrevious: () -> Void
     let onNext: () -> Void
@@ -167,16 +171,16 @@ private struct DayNavigator: View {
             Button(action: onPrevious) {
                 Image(systemName: "chevron.left")
             }
-            .accessibilityLabel("Previous day")
+            .accessibilityLabel("Previous \(unit)")
             Spacer()
-            Text(day, format: .dateTime.weekday(.wide).month().day())
+            title
                 .font(.headline)
             Spacer()
             Button(action: onNext) {
                 Image(systemName: "chevron.right")
             }
             .disabled(!canGoForward)
-            .accessibilityLabel("Next day")
+            .accessibilityLabel("Next \(unit)")
         }
         .buttonStyle(.bordered)
     }

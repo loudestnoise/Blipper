@@ -1,6 +1,8 @@
 # Blipper
 
-A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) data from [Tidepool](https://www.tidepool.org).
+A native SwiftUI iPhone app for reviewing your diabetes data from [Tidepool](https://www.tidepool.org).
+
+Blipper goes beyond continuous glucose monitor (CGM) readings. Alongside your glucose trace it shows insulin (boluses, including closed-loop automatic doses, and basal rates), carbs, and fingerstick meter readings. It also includes trend reports covering 7 to 90 days, your devices' pump and CGM settings, and notes you can pin to a moment and review against the data around it. And it manages who you share your Tidepool data with and which device clouds feed into it.
 
 > ## ⚠️ Not for treatment decisions
 >
@@ -27,7 +29,8 @@ A native SwiftUI iPhone app that shows your continuous glucose monitor (CGM) dat
 **BG Log** – blood glucose meter (fingerstick) readings for the last 7, 14, 30, or 90 days, grouped by day with count, average, and in-range summary.
 
 **Trends** – 7, 14, 30, or 90 day reports.
-- Time in range with change versus the previous period.
+- Step back and forward one whole period at a time to review earlier stretches; switching the period length keeps the same last day.
+- Time in range with change versus the period just before the one shown.
 - Average, standard deviation, coefficient of variation, and glucose management indicator (GMI).
 - Ambulatory glucose profile (AGP) with median and 25–75 / 5–95 percentile bands.
 - Daily stacked range bars.

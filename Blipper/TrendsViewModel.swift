@@ -29,6 +29,10 @@ final class TrendsViewModel {
     }
     /// Start of the last day shown. Stepping back moves it by one period; changing the period keeps it.
     private(set) var endDay: Date
+    /// The last day with CGM data, when that is before today: periods open ending there and
+    /// cannot step past it. `nil` when data runs through today or nothing is known.
+    private(set) var dataEndDay: Date?
+    private var hasResolvedDataEnd = false
 
     private(set) var readings: [GlucoseReading] = []
     private(set) var previousReadings: [GlucoseReading] = []
@@ -45,7 +49,9 @@ final class TrendsViewModel {
     // MARK: Derived state
 
     var isCurrent: Bool { endDay >= calendar.startOfDay(for: Date()) }
-    var canGoForward: Bool { !isCurrent }
+    /// The newest day a period can end on.
+    private var lastDay: Date { dataEndDay ?? calendar.startOfDay(for: Date()) }
+    var canGoForward: Bool { endDay < lastDay }
 
     /// Whole calendar days: `period` days ending with `endDay`, through now when that is today.
     var interval: DateInterval {
@@ -84,7 +90,7 @@ final class TrendsViewModel {
 
     func nextPeriod() {
         guard canGoForward, let later = calendar.date(byAdding: .day, value: period.rawValue, to: endDay) else { return }
-        moveTo(min(later, calendar.startOfDay(for: Date())))
+        moveTo(min(later, lastDay))
     }
 
     private func moveTo(_ day: Date) {
@@ -94,9 +100,28 @@ final class TrendsViewModel {
         Task { await load() }
     }
 
+    /// Reloads, first checking again where the account's data ends in case more has arrived.
+    func refresh() async {
+        hasResolvedDataEnd = false
+        await load()
+    }
+
+    private func resolveDataEnd() async {
+        hasResolvedDataEnd = true
+        let newest = try? await provider.latestReadingDate()
+        let wasOnLastDay = endDay >= lastDay
+        dataEndDay = DataEnd.day(newest: newest, calendar: calendar)
+        if (wasOnLastDay || endDay > lastDay), endDay != lastDay {
+            endDay = lastDay
+            readings = []
+            previousReadings = []
+        }
+    }
+
     func load() async {
         isLoading = true
         defer { isLoading = false }
+        if !hasResolvedDataEnd { await resolveDataEnd() }
         let current = interval
         let previous = previousInterval
         do {

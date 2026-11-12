@@ -12,11 +12,14 @@ actor TidepoolGlucoseProvider: GlucoseDataProvider, DeviceInfoProvider, TherapyD
 
     private let client: TidepoolClient
     private let credentials: TidepoolCredentials
+    /// The shared account to read instead of the login's own; `nil` reads the login's own.
+    private let subjectID: String?
     private var session: TidepoolSession?
 
-    init(credentials: TidepoolCredentials, client: TidepoolClient = TidepoolClient()) {
+    init(credentials: TidepoolCredentials, client: TidepoolClient = TidepoolClient(), subjectID: String? = nil) {
         self.credentials = credentials
         self.client = client
+        self.subjectID = subjectID
     }
 
     func readings(in interval: DateInterval) async throws -> [GlucoseReading] {
@@ -34,6 +37,24 @@ actor TidepoolGlucoseProvider: GlucoseDataProvider, DeviceInfoProvider, TherapyD
     func fingersticks(in interval: DateInterval) async throws -> [BGMReading] {
         try await withSession { session in
             try await client.fingersticks(session: session, in: interval)
+        }
+    }
+
+    func latestReadingDate() async throws -> Date? {
+        try await withSession { session in
+            try await client.latestDataDate(session: session, types: "cbg")
+        }
+    }
+
+    func latestTherapyDate() async throws -> Date? {
+        try await withSession { session in
+            try await client.latestDataDate(session: session, types: "bolus,basal,wizard,food,smbg")
+        }
+    }
+
+    func latestFingerstickDate() async throws -> Date? {
+        try await withSession { session in
+            try await client.latestDataDate(session: session, types: "smbg")
         }
     }
 
@@ -57,7 +78,8 @@ actor TidepoolGlucoseProvider: GlucoseDataProvider, DeviceInfoProvider, TherapyD
 
     private func currentSession() async throws -> TidepoolSession {
         if let session { return session }
-        let fresh = try await client.login(email: credentials.email, password: credentials.password)
+        var fresh = try await client.login(email: credentials.email, password: credentials.password)
+        if let subjectID { fresh.subjectID = subjectID }
         session = fresh
         return fresh
     }

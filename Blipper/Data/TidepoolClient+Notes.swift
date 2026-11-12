@@ -13,7 +13,7 @@ extension TidepoolClient {
     func notes(session: TidepoolSession) async throws -> [Note] {
         let data: Data
         do {
-            data = try await send(session: session, method: "GET", path: "message/notes/\(session.userID)")
+            data = try await send(session: session, method: "GET", path: "message/notes/\(session.subjectID)")
         } catch TidepoolError.notFound {
             return []
         }
@@ -27,16 +27,16 @@ extension TidepoolClient {
             .sorted { $0.timestamp > $1.timestamp }
     }
 
-    /// POST /message/send/{userId}; the service requires `guid`, `timestamp`, and `messagetext`.
+    /// POST /message/send/{userId}, authored by the login on the viewed account; the service requires `guid`, `timestamp`, and `messagetext`.
     func addNote(session: TidepoolSession, text: String, timestamp: Date) async throws -> Note {
         let body = WireNewNote(message: WireNewNote.Message(
             guid: UUID().uuidString,
             userid: session.userID,
-            groupid: session.userID,
+            groupid: session.subjectID,
             timestamp: Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(timestamp),
             messagetext: text
         ))
-        let data = try await send(session: session, method: "POST", path: "message/send/\(session.userID)", body: body)
+        let data = try await send(session: session, method: "POST", path: "message/send/\(session.subjectID)", body: body)
         let created = try JSONDecoder().decode(WireCreated.self, from: data)
         return Note(id: created.id, text: text, timestamp: timestamp)
     }

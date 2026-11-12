@@ -18,6 +18,17 @@ struct BGLogView: View {
         NavigationStack {
             List {
                 Section {
+                    DateNavigator(
+                        title: rangeTitle,
+                        unit: "period",
+                        canGoForward: model.canGoForward,
+                        onPrevious: model.previousPeriod,
+                        onNext: model.nextPeriod
+                    )
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
                     Picker("Period", selection: $model.period) {
                         ForEach(TrendPeriod.allCases) { period in
                             Text(period.label).tag(period)
@@ -40,7 +51,9 @@ struct BGLogView: View {
                             Label(errorMessage, systemImage: "exclamationmark.triangle")
                                 .foregroundStyle(.red)
                         } else {
-                            Text("No meter readings in the last \(model.period.days) days.")
+                            Text(model.isCurrent
+                                 ? "No meter readings in the last \(model.period.days) days."
+                                 : "No meter readings in this period.")
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -73,9 +86,18 @@ struct BGLogView: View {
                     }
                 }
             }
-            .refreshable { await model.load() }
+            .refreshable { await model.refresh() }
             .task { await model.load() }
         }
+    }
+
+    private var rangeTitle: Text {
+        let interval = model.interval
+        // The interval ends at midnight after the last day unless it runs through now.
+        let lastDay = interval.end.addingTimeInterval(-1)
+        let showsYear = !Calendar.current.isDate(interval.start, equalTo: Date(), toGranularity: .year)
+        let style = showsYear ? Date.FormatStyle.dateTime.month(.abbreviated).day().year() : .dateTime.month(.abbreviated).day()
+        return Text("\(interval.start, format: style) – \(lastDay, format: style)")
     }
 
     private var summary: some View {

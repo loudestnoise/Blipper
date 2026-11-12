@@ -98,6 +98,33 @@ extension TidepoolClient {
         return members
     }
 
+    /// GET /metadata/users/{userId}/users — the other direction of `careTeam`: accounts that granted
+    /// this login `trustorPermissions`, so their data can be viewed here.
+    func sharedAccounts(session: TidepoolSession) async throws -> [ViewableAccount] {
+        let data: Data
+        do {
+            data = try await send(session: session, method: "GET", path: "metadata/users/\(session.userID)/users")
+        } catch TidepoolError.notFound {
+            return []
+        }
+        let users = try JSONDecoder().decode([WireAssociatedUser].self, from: data)
+        let accounts = users.compactMap { user -> ViewableAccount? in
+            guard let keys = user.trustorPermissions?.keys, !keys.isEmpty else { return nil }
+            // An account kept on someone's behalf (a child's, say) carries that person's name.
+            let patient = user.profile?.patient
+            let name = (patient?.isOtherPerson == true ? patient?.fullName?.nilIfEmpty : nil)
+                ?? user.profile?.fullName?.nilIfEmpty
+                ?? user.emails?.first
+                ?? user.username
+                ?? "Shared account"
+            return ViewableAccount(id: user.userid, name: name, isOwn: false)
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        // Counts only; never names.
+        Self.shareLog.notice("shared accounts: \(users.count) linked accounts, \(accounts.count) viewable")
+        return accounts
+    }
+
     /// GET /confirm/invite/{userId} — invitations this account sent that are still open.
     func sentInvites(session: TidepoolSession) async throws -> [SentInvite] {
         let data: Data
@@ -185,8 +212,16 @@ extension TidepoolClient {
         try await send(session: session, method: method, path: path, rawBody: try JSONEncoder().encode(body))
     }
 
-    func send(session: TidepoolSession, method: String, path: String, rawBody: Data? = nil) async throws -> Data {
-        var request = URLRequest(url: Self.base.appending(path: path))
+    func send(
+        session: TidepoolSession, method: String, path: String, query: [URLQueryItem] = [], rawBody: Data? = nil
+    ) async throws -> Data {
+        var components = URLComponents(url: Self.base.appending(path: path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query
+            // URLComponents leaves "+" alone, and the server reads a bare "+" as a space.
+            components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+        }
+        var request = URLRequest(url: components.url!)
         request.httpMethod = method
         request.setValue(session.token, forHTTPHeaderField: "X-Tidepool-Session-Token")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -274,13 +309,36 @@ extension TidepoolClient {
 
     private struct WireAssociatedUser: Decodable {
         struct Profile: Decodable {
+            struct Patient: Decodable {
+                let isOtherPerson: Bool?
+                let fullName: String?
+            }
             let fullName: String?
+            let patient: Patient?
         }
         let userid: String
         let username: String?
         let emails: [String]?
         let profile: Profile?
+        /// What this login granted the other account.
         let trusteePermissions: WirePermissionMap?
+        /// What the other account granted this login.
+        let trustorPermissions: WirePermissionMap?
+
+        private enum CodingKeys: String, CodingKey {
+            case userid, username, emails, profile, trusteePermissions, trustorPermissions
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            userid = try c.decode(String.self, forKey: .userid)
+            username = try? c.decodeIfPresent(String.self, forKey: .username)
+            emails = try? c.decodeIfPresent([String].self, forKey: .emails)
+            // Profiles are free-form on the server; an odd one costs the name, not the account.
+            profile = try? c.decodeIfPresent(Profile.self, forKey: .profile)
+            trusteePermissions = try? c.decodeIfPresent(WirePermissionMap.self, forKey: .trusteePermissions)
+            trustorPermissions = try? c.decodeIfPresent(WirePermissionMap.self, forKey: .trustorPermissions)
+        }
     }
 
     private struct WireConfirmation: Decodable {

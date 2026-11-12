@@ -16,6 +16,7 @@ nonisolated enum CredentialStore {
     private static let service = "com.PickleTron.blipper.tidepool"
     private static let emailAccount = "email"
     private static let passwordAccount = "password"
+    private static let defaultAccountAccount = "defaultAccount"
 
     static func load() -> TidepoolCredentials? {
         guard let email = read(account: emailAccount),
@@ -28,8 +29,23 @@ nonisolated enum CredentialStore {
         try write(credentials.password, account: passwordAccount)
     }
 
+    /// The account to open at launch, kept here because it carries another person's name.
+    static func loadDefaultAccount() -> ViewableAccount? {
+        guard let json = read(account: defaultAccountAccount) else { return nil }
+        return try? JSONDecoder().decode(ViewableAccount.self, from: Data(json.utf8))
+    }
+
+    static func saveDefaultAccount(_ account: ViewableAccount?) {
+        guard let account, let data = try? JSONEncoder().encode(account),
+              let json = String(data: data, encoding: .utf8) else {
+            SecItemDelete(baseQuery(account: defaultAccountAccount) as CFDictionary)
+            return
+        }
+        try? write(json, account: defaultAccountAccount)
+    }
+
     static func clear() {
-        for account in [emailAccount, passwordAccount] {
+        for account in [emailAccount, passwordAccount, defaultAccountAccount] {
             SecItemDelete(baseQuery(account: account) as CFDictionary)
         }
     }

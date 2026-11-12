@@ -7,6 +7,8 @@ import SwiftUI
 
 struct SettingsView: View {
     let email: String?
+    /// The live session, for switching accounts; `nil` on mock data.
+    let session: SessionStore?
     let deviceProvider: any DeviceInfoProvider
     let shareProvider: any ShareProvider
     let dataConnectionProvider: any DataConnectionProvider
@@ -19,6 +21,7 @@ struct SettingsView: View {
     @State private var path: [SettingsRoute] = Self.initialPath
 
     private enum SettingsRoute: Hashable {
+        case accounts
         case sharing
         case dataConnections
         case device(String)
@@ -36,12 +39,14 @@ struct SettingsView: View {
 
     init(
         email: String? = nil,
+        session: SessionStore? = nil,
         deviceProvider: any DeviceInfoProvider = MockDeviceInfoProvider(),
         shareProvider: any ShareProvider = MockShareProvider(),
         dataConnectionProvider: any DataConnectionProvider = MockDataConnectionProvider(),
         onSignOut: @escaping () -> Void = {}
     ) {
         self.email = email
+        self.session = session
         self.deviceProvider = deviceProvider
         self.shareProvider = shareProvider
         self.dataConnectionProvider = dataConnectionProvider
@@ -53,17 +58,33 @@ struct SettingsView: View {
             Form {
                 Section {
                     LabeledContent("Tidepool", value: email ?? "Mock data")
-                    NavigationLink(value: SettingsRoute.sharing) {
-                        Label("Sharing", systemImage: "person.2")
+                    if let session, session.hasAccountChoice {
+                        NavigationLink(value: SettingsRoute.accounts) {
+                            LabeledContent {
+                                Text(viewedAccount.map { $0.isOwn ? "My account" : $0.name } ?? "")
+                            } label: {
+                                Label("Viewing", systemImage: "person.crop.circle.badge.checkmark")
+                            }
+                        }
                     }
-                    NavigationLink(value: SettingsRoute.dataConnections) {
-                        Label("Data Connections", systemImage: "icloud.and.arrow.down")
+                    if isViewingOwnAccount {
+                        NavigationLink(value: SettingsRoute.sharing) {
+                            Label("Sharing", systemImage: "person.2")
+                        }
+                        NavigationLink(value: SettingsRoute.dataConnections) {
+                            Label("Data Connections", systemImage: "icloud.and.arrow.down")
+                        }
                     }
                     Button("Sign Out", role: .destructive) { confirmSignOut = true }
                 } header: {
                     Text("Account")
                 } footer: {
-                    Text("Sharing lets clinics and care team members view your Tidepool data. Data Connections link Dexcom, twiist, or FreeStyle Libre cloud accounts to Tidepool, as in Tidepool Web.")
+                    if isViewingOwnAccount {
+                        Text("Sharing lets clinics and care team members view your Tidepool data. Data Connections link Dexcom, twiist, or FreeStyle Libre cloud accounts to Tidepool, as in Tidepool Web.")
+                    } else {
+                        Text(viewedAccount?.clinicName.map { "You are viewing \(viewedAccount?.name ?? "a patient"), a patient of \($0)." }
+                             ?? "You are viewing data \(viewedAccount?.name ?? "someone") shares with you. Sharing and Data Connections are available when viewing your own account.")
+                    }
                 }
 
                 Section {
@@ -120,6 +141,10 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SettingsRoute.self) { route in
                 switch route {
+                case .accounts:
+                    if let session {
+                        AccountSwitcherView(session: session)
+                    }
                 case .sharing:
                     ShareView(provider: shareProvider)
                 case .dataConnections:
@@ -130,7 +155,10 @@ struct SettingsView: View {
                     }
                 }
             }
-            .refreshable { await load() }
+            .refreshable {
+                await load()
+                await session?.refreshAccounts()
+            }
             .task { await load() }
             .confirmationDialog("Sign out of Tidepool?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive, action: onSignOut)
@@ -139,6 +167,9 @@ struct SettingsView: View {
             }
         }
     }
+
+    private var viewedAccount: ViewableAccount? { session?.account }
+    private var isViewingOwnAccount: Bool { viewedAccount?.isOwn ?? true }
 
     private static var versionString: String {
         let info = Bundle.main.infoDictionary

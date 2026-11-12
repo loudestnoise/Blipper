@@ -12,6 +12,8 @@ struct NotesView: View {
     let provider: any NoteProvider
     let glucoseProvider: any GlucoseDataProvider
     let therapyProvider: any TherapyDataProvider
+    /// Off when viewing a clinic patient: Blipper reads their notes but does not write to their account.
+    let canAdd: Bool
 
     @State private var notes: [Note] = []
     @State private var isLoading = false
@@ -22,8 +24,10 @@ struct NotesView: View {
     init(
         provider: any NoteProvider = MockNoteProvider(),
         glucoseProvider: any GlucoseDataProvider = MockGlucoseProvider(),
-        therapyProvider: any TherapyDataProvider = MockTherapyProvider()
+        therapyProvider: any TherapyDataProvider = MockTherapyProvider(),
+        canAdd: Bool = true
     ) {
+        self.canAdd = canAdd
         self.provider = provider
         self.glucoseProvider = glucoseProvider
         self.therapyProvider = therapyProvider
@@ -84,11 +88,13 @@ struct NotesView: View {
             .navigationTitle("Notes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { isComposing = true } label: {
-                        Image(systemName: "plus")
+                if canAdd {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { isComposing = true } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("New note")
                     }
-                    .accessibilityLabel("New note")
                 }
             }
             .sheet(isPresented: $isComposing) {

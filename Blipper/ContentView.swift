@@ -9,11 +9,22 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var model: GlucoseViewModel
+    /// Set when the data belongs to an account shared with the login, so that is never in doubt.
+    private let sharedAccountName: String?
+    /// "Patients" or "Switch Account": what the button under the name goes back to.
+    private let switchTitle: String
+    private let onSwitchAccount: (() -> Void)?
 
     init(
         provider: any GlucoseDataProvider = MockGlucoseProvider(),
-        therapyProvider: (any TherapyDataProvider)? = MockTherapyProvider()
+        therapyProvider: (any TherapyDataProvider)? = MockTherapyProvider(),
+        sharedAccountName: String? = nil,
+        switchTitle: String = "Switch Account",
+        onSwitchAccount: (() -> Void)? = nil
     ) {
+        self.sharedAccountName = sharedAccountName
+        self.switchTitle = switchTitle
+        self.onSwitchAccount = onSwitchAccount
         _model = State(initialValue: GlucoseViewModel(provider: provider, therapyProvider: therapyProvider))
     }
 
@@ -21,6 +32,21 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    if let sharedAccountName {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Viewing \(sharedAccountName)", systemImage: "person.2.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.tint)
+                            if let onSwitchAccount {
+                                Button(action: onSwitchAccount) {
+                                    Label(switchTitle, systemImage: "chevron.left")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+
                     ReadingHeader(reading: model.headerReading, isSelection: model.selectedReading != nil)
 
                     DateNavigator(
@@ -89,7 +115,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .refreshable { await model.load() }
+            .refreshable { await model.refresh() }
             .task { await model.load() }
             .task { await model.autoRefresh() }
         }

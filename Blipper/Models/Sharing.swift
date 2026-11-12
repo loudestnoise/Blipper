@@ -41,7 +41,7 @@ nonisolated struct SharePermissions: Sendable, Equatable {
 }
 
 /// A clinic as returned by a share code lookup.
-nonisolated struct ClinicSummary: Identifiable, Sendable, Equatable {
+nonisolated struct ClinicSummary: Identifiable, Sendable, Hashable {
     let id: String
     let name: String
     let shareCode: String

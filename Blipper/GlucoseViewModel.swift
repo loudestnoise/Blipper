@@ -29,6 +29,12 @@ final class GlucoseViewModel {
 
     /// Start of the day being displayed.
     private(set) var day: Date
+    /// The last day with any data, when that is before today: the screen opens there and cannot
+    /// step past it. `nil` when data runs through today or nothing is known.
+    private(set) var dataEndDay: Date?
+    /// When the newest record on `dataEndDay` was made, so the chart can end there, not at midnight.
+    private var dataEndTime: Date?
+    private var hasResolvedDataEnd = false
     var window: ChartWindow = .sixHours {
         didSet { clearSelectionIfOutsideWindow() }
     }
@@ -57,7 +63,9 @@ final class GlucoseViewModel {
     // MARK: Derived state
 
     var isToday: Bool { calendar.isDateInToday(day) }
-    var canGoForward: Bool { !isToday }
+    /// The newest day that can be shown.
+    private var lastDay: Date { dataEndDay ?? calendar.startOfDay(for: Date()) }
+    var canGoForward: Bool { day < lastDay }
 
     var dayInterval: DateInterval {
         let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
@@ -66,7 +74,9 @@ final class GlucoseViewModel {
 
     /// The visible span: the last `window` hours of the day, ending now for today.
     var windowInterval: DateInterval {
-        let end = isToday ? min(Date(), dayInterval.end) : dayInterval.end
+        var end = isToday ? min(Date(), dayInterval.end) : dayInterval.end
+        // On the last day with data the window ends at the newest record, as today's ends at now.
+        if let dataEndTime, day == dataEndDay { end = min(end, max(dataEndTime, day.addingTimeInterval(3600))) }
         let start = max(day, end.addingTimeInterval(-TimeInterval(window.rawValue) * 3600))
         return DateInterval(start: start, end: end)
     }
@@ -123,6 +133,7 @@ final class GlucoseViewModel {
     func load() async {
         isLoading = true
         defer { isLoading = false }
+        if !hasResolvedDataEnd { await resolveDataEnd() }
         do {
             let interval = dayInterval
             async let readings = provider.readings(in: interval)
@@ -134,6 +145,31 @@ final class GlucoseViewModel {
             // Superseded by a newer load; keep what we have.
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Reloads, first checking again where the account's data ends in case more has arrived.
+    func refresh() async {
+        hasResolvedDataEnd = false
+        await load()
+    }
+
+    /// Finds the newest day with data. A screen sitting on the newest day follows it; one the
+    /// user has stepped back from stays put.
+    private func resolveDataEnd() async {
+        hasResolvedDataEnd = true
+        async let glucose = provider.latestReadingDate()
+        async let therapy = therapyProvider?.latestTherapyDate()
+        // A failed lookup just means no limit; the data load reports real errors.
+        let newest = [try? await glucose, try? await therapy].compactMap { $0 }.max()
+        let wasOnLastDay = day >= lastDay
+        dataEndDay = DataEnd.day(newest: newest, calendar: calendar)
+        dataEndTime = dataEndDay == nil ? nil : newest
+        if (wasOnLastDay || day > lastDay), day != lastDay {
+            day = lastDay
+            selectedTime = nil
+            dayReadings = []
+            dayTherapy = .empty
         }
     }
 
@@ -152,7 +188,7 @@ final class GlucoseViewModel {
         while !Task.isCancelled {
             try? await Task.sleep(for: Self.refreshInterval)
             guard !Task.isCancelled else { return }
-            await load()
+            await refresh()
         }
     }
 

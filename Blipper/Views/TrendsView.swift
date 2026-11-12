@@ -64,7 +64,7 @@ struct TrendsView: View {
                     }
                 }
             }
-            .refreshable { await model.load() }
+            .refreshable { await model.refresh() }
             .task { await model.load() }
         }
     }

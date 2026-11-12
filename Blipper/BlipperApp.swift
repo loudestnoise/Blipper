@@ -15,7 +15,9 @@ struct BlipperApp: App {
         WindowGroup {
             if Self.useMockData {
                 MainTabView(initialTab: Self.initialTab)
-            } else if let provider = session.provider {
+            } else if !session.isSignedIn {
+                LoginView(session: session)
+            } else if let provider = session.provider, let account = session.account {
                 MainTabView(
                     glucoseProvider: provider,
                     therapyProvider: provider,
@@ -24,12 +26,17 @@ struct BlipperApp: App {
                     dataConnectionProvider: provider,
                     noteProvider: provider,
                     email: session.email,
+                    session: session,
                     onSignOut: session.signOut,
                     initialTab: Self.initialTab
                 )
-                .id(session.email)
+                // A different account means different data everywhere: start the tabs over.
+                .id(account.id)
+                .task { if session.accounts.isEmpty { await session.refreshAccounts() } }
             } else {
-                LoginView(session: session)
+                // Signed in, but other accounts are shared with this login and none is picked yet.
+                AccountPickerView(session: session)
+                    .task { if session.accounts.isEmpty { await session.refreshAccounts() } }
             }
         }
     }

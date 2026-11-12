@@ -31,7 +31,18 @@ nonisolated enum TidepoolError: LocalizedError {
 
 nonisolated struct TidepoolSession: Sendable {
     let token: String
+    /// The account that logged in.
     let userID: String
+    /// The account whose data is read: the login's own, or one shared with it.
+    var subjectID: String
+
+    init(token: String, userID: String, subjectID: String? = nil) {
+        self.token = token
+        self.userID = userID
+        self.subjectID = subjectID ?? userID
+    }
+
+    var isViewingOwnAccount: Bool { subjectID == userID }
 }
 
 nonisolated struct TidepoolClient: Sendable {
@@ -68,7 +79,7 @@ nonisolated struct TidepoolClient: Sendable {
     /// CGM (`cbg`) readings in `interval`, converted to mg/dL and sorted ascending.
     func cgmReadings(session: TidepoolSession, in interval: DateInterval) async throws -> [GlucoseReading] {
         var components = URLComponents(
-            url: Self.base.appending(path: "data/\(session.userID)"),
+            url: Self.base.appending(path: "data/\(session.subjectID)"),
             resolvingAgainstBaseURL: false
         )!
         components.queryItems = [
@@ -84,7 +95,8 @@ nonisolated struct TidepoolClient: Sendable {
         guard let http = response as? HTTPURLResponse else { throw TidepoolError.badResponse }
         switch http.statusCode {
         case 200...299: break
-        case 401, 403: throw TidepoolError.invalidCredentials
+        case 401: throw TidepoolError.invalidCredentials
+        case 403: throw TidepoolError.forbidden
         default: throw TidepoolError.http(http.statusCode)
         }
         let records = try JSONDecoder().decode([Record].self, from: data)
@@ -154,6 +166,16 @@ nonisolated struct TidepoolClient: Sendable {
         let readings = Self.therapyData(from: records).fingersticks.filter { interval.contains($0.timestamp) }
         Self.log.notice("smbg: \(records.count) records → \(readings.count) fingersticks")
         return readings
+    }
+
+    /// Time of the newest record among the comma-separated `types`, or `nil` if there are none.
+    /// `latest=true` has the server return one record per type rather than the account's history.
+    func latestDataDate(session: TidepoolSession, types: String) async throws -> Date? {
+        let data = try await fetchData(session: session, types: types, in: nil, latestOnly: true)
+        let records = try Self.decodeLenient(Record.self, from: data, what: "latest")
+        let newest = records.compactMap { Self.parseTime($0.time) }.max()
+        Self.log.notice("latest \(types, privacy: .public): \(records.count) records, \(newest == nil ? "none" : "found", privacy: .public)")
+        return newest
     }
 
     private static func therapyData(from records: [TherapyRecord]) -> TherapyData {
@@ -233,20 +255,25 @@ nonisolated struct TidepoolClient: Sendable {
         }
     }
 
-    /// GET /data/{userid} for the given comma-separated `types`, optionally from `since` to now.
+    /// GET /data/{userid} (the account being viewed) for the given comma-separated `types`, optionally from `since` to now.
     private func fetchData(session: TidepoolSession, types: String, since: Date?) async throws -> Data {
         try await fetchData(session: session, types: types, in: since.map { DateInterval(start: $0, end: Date()) })
     }
 
-    private func fetchData(session: TidepoolSession, types: String, in interval: DateInterval?) async throws -> Data {
+    private func fetchData(
+        session: TidepoolSession, types: String, in interval: DateInterval?, latestOnly: Bool = false
+    ) async throws -> Data {
         var components = URLComponents(
-            url: Self.base.appending(path: "data/\(session.userID)"),
+            url: Self.base.appending(path: "data/\(session.subjectID)"),
             resolvingAgainstBaseURL: false
         )!
         var items = [URLQueryItem(name: "type", value: types)]
         if let interval {
             items.append(URLQueryItem(name: "startDate", value: Self.queryFormatter.string(from: interval.start)))
             items.append(URLQueryItem(name: "endDate", value: Self.queryFormatter.string(from: interval.end)))
+        }
+        if latestOnly {
+            items.append(URLQueryItem(name: "latest", value: "true"))
         }
         components.queryItems = items
         var request = URLRequest(url: components.url!)
@@ -257,7 +284,8 @@ nonisolated struct TidepoolClient: Sendable {
         guard let http = response as? HTTPURLResponse else { throw TidepoolError.badResponse }
         switch http.statusCode {
         case 200...299: return data
-        case 401, 403: throw TidepoolError.invalidCredentials
+        case 401: throw TidepoolError.invalidCredentials
+        case 403: throw TidepoolError.forbidden
         default: throw TidepoolError.http(http.statusCode)
         }
     }

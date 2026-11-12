@@ -13,6 +13,17 @@ nonisolated protocol TherapyDataProvider: Sendable {
 
     /// Fingerstick (meter) readings only, for longer spans.
     func fingersticks(in interval: DateInterval) async throws -> [BGMReading]
+
+    /// When the newest insulin, carb, or fingerstick record was made; `nil` if none or unknown.
+    func latestTherapyDate() async throws -> Date?
+
+    /// When the newest fingerstick was taken; `nil` if none or unknown.
+    func latestFingerstickDate() async throws -> Date?
+}
+
+extension TherapyDataProvider {
+    func latestTherapyDate() async throws -> Date? { nil }
+    func latestFingerstickDate() async throws -> Date? { nil }
 }
 
 /// Loop-style therapy to go with `MockGlucoseProvider`: a bolus and carbs at each meal,

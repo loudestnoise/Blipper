@@ -17,6 +17,8 @@ struct MainTabView: View {
     let dataConnectionProvider: any DataConnectionProvider
     let noteProvider: any NoteProvider
     let email: String?
+    /// The live session, for switching accounts; `nil` on mock data.
+    let session: SessionStore?
     let onSignOut: () -> Void
 
     @State private var selection: Tab
@@ -29,6 +31,7 @@ struct MainTabView: View {
         dataConnectionProvider: any DataConnectionProvider = MockDataConnectionProvider(),
         noteProvider: any NoteProvider = MockNoteProvider(),
         email: String? = nil,
+        session: SessionStore? = nil,
         onSignOut: @escaping () -> Void = {},
         initialTab: Tab = .today
     ) {
@@ -39,13 +42,19 @@ struct MainTabView: View {
         self.dataConnectionProvider = dataConnectionProvider
         self.noteProvider = noteProvider
         self.email = email
+        self.session = session
         self.onSignOut = onSignOut
         _selection = State(initialValue: initialTab)
     }
 
     var body: some View {
         TabView(selection: $selection) {
-            ContentView(provider: glucoseProvider, therapyProvider: therapyProvider)
+            ContentView(
+                provider: glucoseProvider, therapyProvider: therapyProvider,
+                sharedAccountName: sharedAccountName,
+                switchTitle: session?.account?.isClinicPatient == true ? "Patients" : "Switch Account",
+                onSwitchAccount: session.map { session in { session.leaveAccount() } }
+            )
                 .tabItem { Label("Today", systemImage: "waveform.path.ecg") }
                 .tag(Tab.today)
 
@@ -57,12 +66,16 @@ struct MainTabView: View {
                 .tabItem { Label("BG Log", systemImage: "drop") }
                 .tag(Tab.log)
 
-            NotesView(provider: noteProvider, glucoseProvider: glucoseProvider, therapyProvider: therapyProvider)
+            NotesView(
+                provider: noteProvider, glucoseProvider: glucoseProvider, therapyProvider: therapyProvider,
+                canAdd: session?.account?.isClinicPatient != true
+            )
                 .tabItem { Label("Notes", systemImage: "note.text") }
                 .tag(Tab.notes)
 
             SettingsView(
                 email: email,
+                session: session,
                 deviceProvider: deviceProvider,
                 shareProvider: shareProvider,
                 dataConnectionProvider: dataConnectionProvider,
@@ -72,6 +85,12 @@ struct MainTabView: View {
                 .tag(Tab.settings)
         }
         .modifier(MinimizingTabBar())
+    }
+
+    /// Whose data this is, when it is not the login's own.
+    private var sharedAccountName: String? {
+        guard let account = session?.account, !account.isOwn else { return nil }
+        return account.name
     }
 }
 

@@ -4,6 +4,8 @@ A native SwiftUI iPhone app for reviewing your diabetes data from [Tidepool](htt
 
 Blipper goes beyond continuous glucose monitor (CGM) readings. Alongside your glucose trace it shows insulin (boluses, including closed-loop automatic doses, and basal rates), carbs, and fingerstick meter readings. It also includes trend reports covering 7 to 90 days, your devices' pump and CGM settings, and notes you can pin to a moment and review against the data around it. And it manages who you share your Tidepool data with and which device clouds feed into it.
 
+It is not limited to your own data: Blipper can show accounts that other people share with you, and clinicians can pick a patient from their clinic's list.
+
 > ## ⚠️ Not for treatment decisions
 >
 > **Blipper is an informational viewer only. It is not a medical device and has not been reviewed or cleared by any regulator.**
@@ -25,8 +27,11 @@ Blipper goes beyond continuous glucose monitor (CGM) readings. Alongside your gl
 - Fingerstick readings appear as hollow dots on the glucose chart; scrubbing shows the basal rate in effect and any nearby bolus, carbs, or fingerstick.
 - Summary tiles for time in range, average, and reading count, bolus, basal, and carb totals, plus a five-band breakdown (very low, low, in range, high, very high).
 - Auto-refreshes every 5 minutes, with pull-to-refresh.
+- When you are viewing someone else's data, their name appears at the top with a button back to the account or patient list.
 
-**BG Log** – blood glucose meter (fingerstick) readings for the last 7, 14, 30, or 90 days, grouped by day with count, average, and in-range summary.
+**BG Log** – blood glucose meter (fingerstick) readings over 7, 14, 30, or 90 days, grouped by day with count, average, and in-range summary. Step back and forward one whole period at a time, as in Trends.
+
+**Most recent data** – when an account has no data today, Today, Trends, and BG Log open on the newest day that has some, and the forward arrow stops there. Today's chart ends at the newest record rather than at midnight. Each screen looks at its own kind of data (BG Log at meter readings, Trends at CGM, Today at any of it), and pull-to-refresh checks again in case more has arrived.
 
 **Trends** – 7, 14, 30, or 90 day reports.
 - Step back and forward one whole period at a time to review earlier stretches; switching the period length keeps the same last day.
@@ -39,6 +44,21 @@ Blipper goes beyond continuous glucose monitor (CGM) readings. Alongside your gl
 - Tap + to write a note and set the date and time it is about.
 - Notes are listed newest first with their time, and the author when a care team member wrote them.
 - Tap a note to open its glucose, insulin, carb, and basal graph, marked at the note's time; swipe the graph to see up to 7 hours before the note. Opening another note closes the one that was open. A new note opens its graph as soon as it is saved.
+
+**Shared accounts** – for a login that other people share their Tidepool data with.
+- After signing in, choose whose data to see: your own account or one shared with you.
+- "Open this account by default" remembers the choice; turn it off and Blipper asks each time it opens.
+- Switch at any time under Settings → Viewing, where you can also change the default.
+- Sharing and Data Connections manage your own account, so they are hidden while you view someone else's.
+- If a share is withdrawn, Blipper drops that account and returns to the chooser or to your own data.
+
+**Clinic patients** – for a login that is a clinician in one or more Tidepool clinics.
+- The chooser lists your clinics; pick one to see its patients with date of birth and MRN.
+- Search by name, MRN, or date of birth. The search runs on Tidepool's side and the list loads 50 patients at a time, so a large clinic is never downloaded whole. Dates of birth match as `YYYY-MM-DD`; a date typed `M/D/YYYY` is rewritten for you.
+- Tap a patient to view their data. The Patients button on Today goes back to that clinic's list.
+- Patient names, dates of birth, and MRNs are held in memory only: nothing about a patient is saved to the device or written to logs, so Blipper asks again each time it opens.
+- Notes are read-only for clinic patients.
+- Sign-in is by Tidepool email and password. Clinician accounts with two-factor authentication or single sign-on are not supported yet.
 
 **Settings** – your Tidepool account, devices that uploaded in the last 30 days with their latest pump and CGM settings, target thresholds, and app info.
 
@@ -56,7 +76,7 @@ Blipper goes beyond continuous glucose monitor (CGM) readings. Alongside your gl
 
 - Xcode 27 or later
 - iOS 17.0 or later
-- A Tidepool account with CGM data
+- A Tidepool account with data, access to one that is shared with you, or a clinician account (email and password sign-in, without two-factor authentication)
 
 ## Getting started
 
@@ -64,7 +84,7 @@ Blipper goes beyond continuous glucose monitor (CGM) readings. Alongside your gl
 2. Select your own development team under *Signing & Capabilities*. The app uses a Keychain access group entitlement, so it must be built signed.
 3. Run on a simulator or device and sign in with your Tidepool email and password.
 
-Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch your data, save notes, and manage sharing and data connections. They are never written to logs or sent anywhere else. Connecting a data provider opens that provider's sign-in page in an in-app Safari view; Blipper never sees those credentials.
+Your credentials are stored in the device Keychain and sent only to `api.tidepool.org` to fetch data, save notes, and manage sharing and data connections. If you choose a default account, its name is kept in the Keychain too; clinic patients are never stored. They are never written to logs or sent anywhere else. Connecting a data provider opens that provider's sign-in page in an in-app Safari view; Blipper never sees those credentials.
 
 ### Developing without an account
 
@@ -83,7 +103,7 @@ Two launch arguments are available in Debug builds (set them in the scheme's *Ar
 ## Architecture
 
 - `Models/` – `GlucoseReading`, range classification and statistics, AGP and daily aggregation, device and settings models.
-- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, `ShareProvider` (clinic and care team sharing), and `DataConnectionProvider` (Dexcom, twiist, and LibreView links), and `NoteProvider` (notes in Tidepool's message service) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain.
+- `Data/` – a protocol-based data layer. `GlucoseDataProvider`, `TherapyDataProvider` (bolus, basal, wizard, food, and smbg records), `DeviceInfoProvider`, `ShareProvider` (clinic and care team sharing), and `DataConnectionProvider` (Dexcom, twiist, and LibreView links), and `NoteProvider` (notes in Tidepool's message service) each have a mock implementation and a Tidepool one built on `TidepoolClient`. `CredentialStore` wraps the Keychain. `SessionStore` holds the login, the account being viewed (`ViewableAccount`), and the clinics and shared accounts to choose from; a provider reads another account by carrying its user ID as the session's subject.
 - `Views/` – SwiftUI views using Swift Charts.
 - View models are `@Observable` and `@MainActor`; the data layer is `nonisolated` and `Sendable`.
 
